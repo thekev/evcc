@@ -16,6 +16,7 @@ import (
 // Twc3 is an api.Vehicle implementation for Twc3 cars
 type Twc3 struct {
 	*request.Helper
+	log     *util.Logger
 	lp      loadpoint.API
 	uri     string
 	vitalsG func() (Vitals, error)
@@ -59,8 +60,8 @@ type Vitals struct {
 // NewTwc3FromConfig creates a new vehicle
 func NewTwc3FromConfig(other map[string]interface{}) (api.Charger, error) {
 	cc := struct {
-		URI   string
-		Cache time.Duration
+		URI         string
+		Cache       time.Duration
 	}{
 		Cache: time.Second,
 	}
@@ -74,6 +75,7 @@ func NewTwc3FromConfig(other map[string]interface{}) (api.Charger, error) {
 	c := &Twc3{
 		Helper: request.NewHelper(log),
 		uri:    util.DefaultScheme(strings.TrimSuffix(cc.URI, "/"), "http"),
+		log:    log,
 	}
 
 	c.vitalsG = provider.Cached(func() (Vitals, error) {
@@ -161,12 +163,32 @@ func (v *Twc3) ChargingTime() (time.Duration, error) {
 	return time.Duration(res.SessionS) * time.Second, err
 }
 
+// Determine if workaround needed for TWC3 single phase vitals
+// This can only be determined while vehicle is charging
+func IsSplitPhase(v *Twc3, res Vitals) (bool) {
+	// Use anomalous phase C readings to identify, i.e.
+	//   "voltageA_v": 241.5,
+        //   "voltageB_v": 241.5,
+        //   "voltageC_v": 118.7,
+	avgAB := (res.VoltageAV + res.VoltageBV) / 2
+	if res.ContactorClosed && (res.VoltageCV > avgAB / 2.1 || res.VoltageCV < avgAB / 1.9) {
+		v.log.DEBUG.Println("Using split-phase workaround")
+		return true
+	} else {
+		return false
+	}
+}
+
 var _ api.PhaseCurrents = (*Twc3)(nil)
 
 // Currents implements the api.PhaseCurrents interface
 func (v *Twc3) Currents() (float64, float64, float64, error) {
 	res, err := v.vitalsG()
-	return res.CurrentAA, res.CurrentBA, res.CurrentCA, err
+	if IsSplitPhase(v, res) {
+		return res.CurrentAA + res.CurrentBA, 0, 0, err
+	} else {
+		return res.CurrentAA, res.CurrentBA, res.CurrentCA, err
+	}
 }
 
 var _ api.Meter = (*Twc3)(nil)
@@ -175,7 +197,11 @@ var _ api.Meter = (*Twc3)(nil)
 func (v *Twc3) CurrentPower() (float64, error) {
 	res, err := v.vitalsG()
 	if res.ContactorClosed {
-		return (res.CurrentAA + res.CurrentBA + res.CurrentCA) * res.GridV, err
+	        if IsSplitPhase(v, res) {
+			return (res.CurrentAA * res.VoltageAV) + (res.CurrentBA * res.VoltageBV), err
+		} else {
+			return (res.CurrentAA * res.VoltageAV) + (res.CurrentBA * res.VoltageBV) + (res.CurrentCA * res.VoltageCV), err
+		}
 	}
 	return 0, err
 }
@@ -185,7 +211,11 @@ var _ api.PhaseVoltages = (*Twc3)(nil)
 // Voltages implements the api.PhaseVoltages interface
 func (v *Twc3) Voltages() (float64, float64, float64, error) {
 	res, err := v.vitalsG()
-	return res.VoltageAV, res.VoltageBV, res.VoltageCV, err
+	if IsSplitPhase(v, res) {
+		return (res.VoltageAV + res.VoltageBV) / 2, 0, 0, err
+	} else {
+		return res.VoltageAV, res.VoltageBV, res.VoltageCV, err
+	}
 }
 
 var _ loadpoint.Controller = (*Twc3)(nil)

@@ -9,6 +9,7 @@ requirements:
     de: Das Teslafahrzeug muss dem TWC3 im evcc UI zugewiesen sein.
 params:
   - name: host
+    required: true
 render: |
   type: twc3
   uri: http://{{ .host }}
