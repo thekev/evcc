@@ -14,7 +14,7 @@ import (
 // https://github.com/TA2k/ioBroker.bmw
 
 const (
-	CocoApiURI = "https://cocoapi.bmwgroup.com"
+	CocoApiURI = "https://cocoapi.bmwgroup.us"
 )
 
 // API is an api.Vehicle implementation for BMW cars

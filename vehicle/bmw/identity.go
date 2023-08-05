@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	AuthURI     = "https://customer.bmwgroup.com/gcdm/oauth"
+	AuthURI     = "https://login.bmwusa.com/gcdm/oauth"
 	RedirectURI = "com.bmw.connected://oauth"
 )
 
@@ -52,7 +52,7 @@ func (v *Identity) Login(user, password string) (oauth2.TokenSource, error) {
 	}
 
 	data := url.Values{
-		"client_id":             {"31c357a0-7a1d-4590-aa99-33b97244d048"},
+		"client_id":             {"54394a4b-b6c1-45fe-b7b2-8fd3aa9253aa"},
 		"response_type":         {"code"},
 		"redirect_uri":          {RedirectURI},
 		"state":                 {"cwU-gIE27j67poy2UcL3KQ"},
@@ -136,7 +136,7 @@ func (v *Identity) retrieveToken(data url.Values) (*oauth2.Token, error) {
 	uri := fmt.Sprintf("%s/token", AuthURI)
 	req, err := request.New(http.MethodPost, uri, strings.NewReader(data.Encode()), map[string]string{
 		"Content-Type":  request.FormContent,
-		"Authorization": "Basic MzFjMzU3YTAtN2ExZC00NTkwLWFhOTktMzNiOTcyNDRkMDQ4OmMwZTMzOTNkLTcwYTItNGY2Zi05ZDNjLTg1MzBhZjY0ZDU1Mg==",
+		"Authorization": "Basic NTQzOTRhNGItYjZjMS00NWZlLWI3YjItOGZkM2FhOTI1M2FhOmQ5MmYzMWMwLWY1NzktNDRmNS1h NzdkLTk2NmY4ZjAwZTM1MQ==",
 	})
 
 	var tok oauth.Token
