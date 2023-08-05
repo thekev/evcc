@@ -114,6 +114,10 @@ func (c *Twc3) Enable(enable bool) error {
 
 	if err == nil {
 		c.enabled = enable
+	} else if err.Error() == "is_charging" {
+		c.log.INFO.Println("Enable: Vehicle already charging")
+		c.enabled = true
+		err = nil
 	}
 
 	return err
